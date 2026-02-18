@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card" style="max-width: 860px;">
+    <h2>{% if profile %}Edit profile{% else %}New profile{% endif %}</h2>
+    <form method="post" action="{% if profile %}/profiles/{{ profile.id }}/edit{% else %}/profiles/new{% endif %}">
+      <div class="row">
+        <div>
+          <label>Name</label>
+          <input type="text" name="name" value="{{ profile.name if profile else '' }}" required />
+        </div>
+        <div>
+          <label>Provider</label>
+          <select name="provider_kind">
+            {% for k in provider_kinds %}
+              <option value="{{ k }}" {% if profile and profile.provider_kind == k %}selected{% endif %}>{{ k }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top: 10px;">
+        <div>
+          <label>Model</label>
+          <input type="text" name="model" value="{{ profile.model if profile else '' }}" placeholder="e.g. gpt-4o, llama3.1:8b, qwen/qwen3-4b" />
+        </div>
+        <div>
+          <label>Base URL (optional)</label>
+          <input type="text" name="base_url" value="{{ profile.base_url if profile else '' }}" placeholder="e.g. http://localhost:8000/v1" />
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>API key {% if profile and profile.api_key_enc %}(currently set){% endif %}</label>
+        <input type="text" name="api_key" placeholder="Leave blank to keep existing" autocomplete="off" />
+        <div class="muted" style="margin-top: 6px;">
+          Stored encrypted at rest. For local servers use any value your server accepts (e.g. <code>lmstudio</code>).
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>Extra JSON (optional)</label>
+        <textarea name="extra_json" placeholder='{\"headers\": {\"X-Foo\": \"bar\"}}'>{{ profile.extra_json if profile else '{}' }}</textarea>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <button type="submit">Save</button>
+        <a class="button button-secondary" href="/profiles">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+

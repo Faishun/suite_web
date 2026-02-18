@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <h2>Dashboard</h2>
+    {% if current_user %}
+      <p class="muted">Signed in as <strong>{{ current_user.username|e }}</strong>{% if current_user.is_admin %} (admin){% endif %}.</p>
+      <div class="card">
+        <h3>Worker status</h3>
+        {% if worker_heartbeat_mtime %}
+          <div class="muted">
+            Worker heartbeat file updated at: {{ worker_heartbeat_mtime }}
+          </div>
+        {% else %}
+          <div class="flash flash-warn">
+            No worker heartbeat detected. Runs will stay in PENDING until you start `python -m suite_web.worker`.
+          </div>
+        {% endif %}
+      </div>
+      <div class="row">
+        <div class="card">
+          <h3>Model profiles</h3>
+          <p class="muted">Configure local vs API models and keys.</p>
+          <a class="button" href="/profiles">Manage profiles</a>
+        </div>
+        <div class="card">
+          <h3>Runs</h3>
+          <p class="muted">Queue scans and watch logs/artifacts.</p>
+          <a class="button" href="/runs">View runs</a>
+        </div>
+      </div>
+    {% else %}
+      <p class="muted">Login to start running scans.</p>
+      <a class="button" href="/login">Login</a>
+    {% endif %}
+  </div>
+{% endblock %}
+

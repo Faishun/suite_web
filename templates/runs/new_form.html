@@ -1,0 +1,159 @@
+<form method="post" action="/runs/new">
+    <div class="row">
+      <div>
+        <label>Tool</label>
+        <select name="tool_kind" id="tool_kind">
+          {% for t in tool_kinds %}
+            <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+        <div class="muted" style="margin-top: 6px;">
+          The worker executes the selected tool in the background.
+        </div>
+      </div>
+      <div>
+        <label>Scanned model profile</label>
+        <select name="model_profile_id" id="model_profile_id">
+          <option value="">(none)</option>
+          {% for p in profiles %}
+            <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind }} — {{ p.model }}</option>
+          {% endfor %}
+        </select>
+        <div class="muted" style="margin-top: 6px;">
+          Optional for tools that don't require model settings.
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top: 10px; display:none;" id="judge_row">
+      <div>
+        <label>Judge model profile (LocalGuard only)</label>
+        <select name="judge_model_profile_id" id="judge_model_profile_id">
+          <option value="">(none)</option>
+          {% for p in profiles %}
+            <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind }} — {{ p.model }}</option>
+          {% endfor %}
+        </select>
+        <div class="muted" style="margin-top: 6px;">
+          LocalGuard needs both a scanned model and a judge model.
+          If you use OpenAI-compatible local models, both usually share the same base URL.
+        </div>
+      </div>
+      <div>
+        <label>Use cache (LocalGuard)</label>
+        <input type="hidden" name="localguard_use_cache" value="0" id="localguard_use_cache_hidden">
+        <label class="checkbox-inline" style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+          <input type="checkbox" name="localguard_use_cache" value="1" id="localguard_use_cache" checked>
+          <span>Remember completed phases and skip them on re-run</span>
+        </label>
+        <div class="muted" style="margin-top: 4px;">
+          Uncheck to run all phases again (disable cache).
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 10px;" id="probes_section">
+      <label>Probes</label>
+      <select name="probes" id="probes" multiple size="10">
+        {% for group in probe_groups %}
+          <optgroup label="{{ group.label }}">
+            {% for opt in group.options %}
+              <option value="{{ opt.value }}" data-kind="{{ group.kind }}" data-description="{{ (opt.description or '')[:2000]|e }}">{{ opt.label }}</option>
+            {% endfor %}
+          </optgroup>
+        {% endfor %}
+      </select>
+      <div id="probe_details" style="margin-top: 8px; display: none;">
+        <label>Probe details</label>
+        <div id="probe_details_content" class="task-detail-box" style="margin-top: 4px;"></div>
+      </div>
+      <div class="muted" style="margin-top: 6px;">
+        Includes built-in probes and your custom probes. Select a probe to read its description. Not used for LocalGuard.
+        For Garak: these become `--probes`. For Augustus: these become repeated `--probe` flags.
+      </div>
+      {% if probe_error %}
+        <div class="flash flash-error" style="margin-top: 8px;">{{ probe_error|e }}</div>
+      {% endif %}
+    </div>
+
+    <div id="agentdojo_section" style="margin-top: 10px; display: none;">
+      <p class="muted">AgentDojo benchmarks <strong>models that use tool/function calling</strong>. Configure suite, tasks, and attack/defense. Leave optional fields empty to use defaults or run all.</p>
+      {% if agentdojo_catalog.error %}
+        <div class="flash flash-error" style="margin-top: 8px;">{{ agentdojo_catalog.error|e }}</div>
+      {% else %}
+        <div class="row" style="margin-top: 8px;">
+          <div>
+            <label>Benchmark version</label>
+            <select name="agentdojo_benchmark_version" id="agentdojo_benchmark_version">
+              {% for v in agentdojo_catalog.benchmark_versions %}
+                <option value="{{ v }}" {% if v == "v1.2.2" %}selected{% endif %}>{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>Suites</label>
+            <select name="agentdojo_suites" id="agentdojo_suites" multiple size="4"></select>
+            <div class="muted" style="margin-top: 4px;">Leave empty to run all suites for this version.</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top: 8px;">
+          <div>
+            <label>User tasks (optional)</label>
+            <select name="agentdojo_user_tasks" id="agentdojo_user_tasks" multiple size="4"></select>
+            <div class="muted" style="margin-top: 4px;">Select a task to read its prompt below.</div>
+          </div>
+          <div>
+            <label>Injection tasks (optional)</label>
+            <select name="agentdojo_injection_tasks" id="agentdojo_injection_tasks" multiple size="4"></select>
+            <div class="muted" style="margin-top: 4px;">Select a task to read its goal below.</div>
+          </div>
+        </div>
+        <div id="agentdojo_task_details" style="margin-top: 10px; display: none;">
+          <label>Task details</label>
+          <div id="agentdojo_user_task_details" class="task-detail-box" style="margin-top: 4px;"></div>
+          <div id="agentdojo_injection_task_details" class="task-detail-box" style="margin-top: 8px;"></div>
+        </div>
+        <style>
+          .task-detail-box .task-detail-item { margin-bottom: 10px; }
+          .task-detail-box .task-detail-text { white-space: pre-wrap; word-break: break-word; max-height: 12em; overflow-y: auto; margin: 4px 0 0 0; padding: 8px; background: #070a10; border: 1px solid #243047; border-radius: 6px; font-size: 0.9em; color: inherit; }
+        </style>
+        <div class="row" style="margin-top: 8px;">
+          <div>
+            <label>Attack (optional)</label>
+            <select name="agentdojo_attack" id="agentdojo_attack">
+              <option value="">(none)</option>
+              {% for a in agentdojo_catalog.attacks %}
+                <option value="{{ a }}">{{ a }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>Defense (optional)</label>
+            <select name="agentdojo_defense" id="agentdojo_defense">
+              <option value="">(none)</option>
+              {% for d in agentdojo_catalog.defenses %}
+                <option value="{{ d }}">{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="muted" style="margin-top: 8px;">
+          Model, base URL, and API key come from the <strong>Scanned model profile</strong> above (openai_compat → LOCAL, openai → GPT-4o, etc.). Override via Advanced params if needed.
+        </div>
+      {% endif %}
+    </div>
+
+    <div style="margin-top: 10px;">
+      <label>Advanced params JSON (optional)</label>
+      <textarea name="params_json" id="params_json" placeholder='{"generations":5,"timeout_s":3600}'></textarea>
+      <div class="muted" style="margin-top: 6px;">
+        This merges on top of the selected fields. Leave blank unless you need extra knobs.
+      </div>
+    </div>
+
+    <div style="margin-top: 12px;">
+      <button type="submit">Queue run</button>
+      <a class="button button-secondary" href="/runs">Cancel</a>
+    </div>
+  </form>
+<script>window.AGENTDOJO_CATALOG = {{ agentdojo_catalog_json | safe }};</script>

@@ -1,0 +1,26 @@
+{
+  "rest": {
+    "RestGenerator": {
+      "name": "liquid/lfm2.5-1.2b",
+      "uri": "http://localhost:8000/v1/chat/completions",
+      "method": "post",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "request_timeout": 120,
+      "req_template_json_object": {
+        "model": "liquid/lfm2.5-1.2b",
+        "messages": [
+          {
+            "role": "user",
+            "content": "$INPUT"
+          }
+        ],
+        "temperature": 0.7,
+        "max_tokens": 512
+      },
+      "response_json": true,
+      "response_json_field": "$.choices[0].message.content"
+    }
+  }
+}

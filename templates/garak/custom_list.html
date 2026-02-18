@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <div class="row" style="align-items: center;">
+      <div><h2>Custom probes (prompt-only)</h2></div>
+      <div style="text-align: right;"><a class="button" href="/garak/custom/new">New custom probe</a></div>
+    </div>
+
+    <div class="muted" style="margin-bottom: 10px;">
+      Stored as Python modules under `suite_web/custom_probes/{{ current_user.id }}/`.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Module</th>
+          <th>Class</th>
+          <th>Active</th>
+          <th>Updated</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in probes %}
+          <tr>
+            <td>{{ p.title|e }}</td>
+            <td class="muted">{{ p.module_name|e }}</td>
+            <td class="muted">{{ p.class_name|e }}</td>
+            <td>{% if p.active %}<span class="pill pill-ok">yes</span>{% else %}<span class="pill">no</span>{% endif %}</td>
+            <td class="muted">{{ p.updated_at }}</td>
+            <td>
+              <a class="button button-secondary" href="/garak/custom/{{ p.id }}/edit">Edit</a>
+              {% if current_user.is_admin and allow_admin_probe_code %}
+                <a class="button button-secondary" href="/garak/custom/{{ p.id }}/code">Code</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
+

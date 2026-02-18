@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card" style="max-width: 980px;">
+    <h2>{% if probe %}Edit custom probe{% else %}New custom probe{% endif %}</h2>
+
+    <div class="muted" style="margin-bottom: 12px;">
+      This generates a garak `Probe` class with a fixed prompt list.\n
+      For fully custom logic, use the admin-only raw-code editor (if enabled).\n
+    </div>
+
+    <form method="post" action="{% if probe %}/garak/custom/{{ probe.id }}/edit{% else %}/garak/custom/new{% endif %}">
+      <div class="row">
+        <div>
+          <label>Title</label>
+          <input type="text" name="title" value="{{ probe.title if probe else '' }}" required />
+        </div>
+        <div>
+          <label>Module name (auto if blank)</label>
+          <input type="text" name="module_name" value="{{ probe.module_name if probe else '' }}" placeholder="e.g. jailbreak_basic" />
+        </div>
+        <div>
+          <label>Class name</label>
+          <input type="text" name="class_name" value="{{ probe.class_name if probe else 'CustomProbe' }}" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top: 10px;">
+        <div>
+          <label>Primary detector</label>
+          <select name="primary_detector">
+            {% set current_det = probe.primary_detector if probe else 'always.Fail' %}
+            {% if current_det not in (garak_detectors or []) %}
+              <option value="{{ current_det }}">{{ current_det }} (custom)</option>
+            {% endif %}
+            {% for d in (garak_detectors or []) %}
+              <option value="{{ d }}" {% if d == current_det %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+          <div class="muted" style="margin-top: 4px;">Evaluator that scores the model’s response for this probe (e.g. did the attack succeed).</div>
+        </div>
+        <div>
+          <label>Doc URI</label>
+          <input type="text" name="doc_uri" value="{{ probe.doc_uri if probe else '' }}" placeholder="https://..." />
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>Goal</label>
+        <input type="text" name="goal" value="{{ probe.goal if probe else '' }}" placeholder="e.g. disregard the system prompt" />
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>Tags (comma-separated)</label>
+        <input type="text" name="tags_csv" value="{{ probe.tags_csv if probe else '' }}" placeholder="owasp:llm01, payload:jailbreak" />
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label><input type="checkbox" name="active" value="1" {% if probe and probe.active %}checked{% endif %} /> Active (included in default scans)</label>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>Prompts (one per line)</label>
+        <textarea name="prompts_text" required>{{ probe.prompts_text if probe else '' }}</textarea>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <button type="submit">Save</button>
+        <a class="button button-secondary" href="/garak/custom">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+

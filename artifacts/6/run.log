@@ -1,0 +1,65 @@
+[worker] claimed run #6 tool=localguard
+[worker] params={"judge_model_profile_id": 2, "use_cache": true}
+[worker] scanned_profile id=1 provider=openai_compat model=liquid/lfm2.5-1.2b base_url=http://localhost:8000/v1
+[preflight] target GET http://localhost:8000/v1/models ok=True status=200 ms=14 err=
+[preflight] judge GET http://localhost:8000/v1/models ok=True status=200 ms=17 err=
+[cmd] cwd=/home/faishun/ai-testbed-suite/LocalGuard
+[cmd] /home/faishun/miniconda3/envs/ai-testbed/bin/python -u -m localguard_cli --provider openai --model liquid/lfm2.5-1.2b --mode full --out-dir /home/faishun/ai-testbed-suite/suite_web/artifacts/6/localguard
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Phase 1: Security Scanning (Garak)                                                                                                                │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Skipping Security Phase (Already Completed)
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Phase 2: Compliance & Safety (Inspect AI)                                                                                                         │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Compliance Target: openai/liquid/lfm2.5-1.2b
+Running Task: Safeguards (Refusal)...
+Error running task Safeguards (Refusal): ERROR: Unable to initialise OpenAI client
+
+No OPENAI_API_KEY, AZUREAI_OPENAI_API_KEY, or managed identity (Entra ID) defined in the environment.
+Running Task: Trust (Privacy)...
+[02/18/26 20:30:51] WARNING  Recognizer not added to registry because language is not supported by registry -         recognizers_loader_utils.py:152
+                             CreditCardRecognizer supported languages: es, registry supported languages: en                                          
+                    WARNING  Recognizer not added to registry because language is not supported by registry -         recognizers_loader_utils.py:152
+                             CreditCardRecognizer supported languages: it, registry supported languages: en                                          
+                    WARNING  Recognizer not added to registry because language is not supported by registry -         recognizers_loader_utils.py:152
+                             CreditCardRecognizer supported languages: pl, registry supported languages: en                                          
+                    WARNING  Recognizer not added to registry because language is not supported by registry -         recognizers_loader_utils.py:152
+                             EsNifRecognizer supported languages: es, registry supported languages: en                                               
+                    WARNING  Recognizer not added to registry because language is not supported by registry -         recognizers_loader_utils.py:152
+                             EsNieRecognizer supported languages: es, registry supported languages: en                                               
+                    WARNING  Recognizer not added to registry because language is not supported by registry -         recognizers_loader_utils.py:152
+                             ItDriverLicenseRecognizer supported languages: it, registry supported languages: en                                     
+                    WARNING  Recognizer not added to registry because language is not supported by registry -         recognizers_loader_utils.py:152
+                             ItFiscalCodeRecognizer supported languages: it, registry supported languages: en                                        
+                    WARNING  Recognizer not added to registry because language is not supported by registry -         recognizers_loader_utils.py:152
+                             ItVatCodeRecognizer supported languages: it, registry supported languages: en                                           
+                    WARNING  Recognizer not added to registry because language is not supported by registry -         recognizers_loader_utils.py:152
+                             ItIdentityCardRecognizer supported languages: it, registry supported languages: en                                      
+                    WARNING  Recognizer not added to registry because language is not supported by registry -         recognizers_loader_utils.py:152
+                             ItPassportRecognizer supported languages: it, registry supported languages: en                                          
+                    WARNING  Recognizer not added to registry because language is not supported by registry -         recognizers_loader_utils.py:152
+                             PlPeselRecognizer supported languages: pl, registry supported languages: en                                             
+Error running task Trust (Privacy): ERROR: Unable to initialise OpenAI client
+
+No OPENAI_API_KEY, AZUREAI_OPENAI_API_KEY, or managed identity (Entra ID) defined in the environment.
+Running Task: Accuracy (Hallucination)...
+Error running task Accuracy (Hallucination): ERROR: Unable to initialise OpenAI client
+
+No OPENAI_API_KEY, AZUREAI_OPENAI_API_KEY, or managed identity (Entra ID) defined in the environment.
+Running Task: Fairness (Bias)...
+Error running task Fairness (Bias): ERROR: Unable to initialise OpenAI client
+
+No OPENAI_API_KEY, AZUREAI_OPENAI_API_KEY, or managed identity (Entra ID) defined in the environment.
+Running Task: Safety (Toxicity)...
+No data file configured for toxicity. Using empty list.
+Error running task Safety (Toxicity): ERROR: Unable to initialise OpenAI client
+
+No OPENAI_API_KEY, AZUREAI_OPENAI_API_KEY, or managed identity (Entra ID) defined in the environment.
+Report saved to /home/faishun/ai-testbed-suite/suite_web/artifacts/6/localguard/LocalGuard_Report_liquid_lfm2.5-1.2b.html
+Generating PDF report to /home/faishun/ai-testbed-suite/suite_web/artifacts/6/localguard/LocalGuard_Report_liquid_lfm2.5-1.2b.pdf...
+                    WARNING  Ignored `overflow-y: auto` at 70:13, unknown property.                                                   __init__.py:188
+Report saved to /home/faishun/ai-testbed-suite/suite_web/artifacts/6/localguard/LocalGuard_Report_liquid_lfm2.5-1.2b.pdf
+
+{"report_path": "/home/faishun/ai-testbed-suite/suite_web/artifacts/6/localguard/LocalGuard_Report_liquid_lfm2.5-1.2b.pdf", "summary_path": "/home/faishun/ai-testbed-suite/suite_web/artifacts/6/localguard/localguard_summary.json"}
+[cmd] exit_code=0 duration_s=7.85

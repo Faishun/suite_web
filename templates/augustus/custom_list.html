@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <div class="row" style="align-items: center;">
+      <div><h2>Custom probes (Augustus templates)</h2></div>
+      <div style="text-align: right;"><a class="button" href="/augustus/custom/new">New template</a></div>
+    </div>
+
+    <div class="muted" style="margin-bottom: 10px;">
+      Stored as YAML templates under `suite_web/custom_augustus_templates/{{ current_user.id }}/` and loaded at runtime via `AUGUSTUS_TEMPLATE_DIR`.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Probe ID</th>
+          <th>Name</th>
+          <th>Detector</th>
+          <th>Severity</th>
+          <th>Updated</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in templates %}
+          <tr>
+            <td class="muted">{{ t.template_id|e }}</td>
+            <td>{{ t.name|e }}</td>
+            <td class="muted">{{ t.detector|e }}</td>
+            <td><span class="pill">{{ t.severity|e }}</span></td>
+            <td class="muted">{{ t.updated_at }}</td>
+            <td><a class="button button-secondary" href="/augustus/custom/{{ t.id }}/edit">Edit</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
+

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <div class="row" style="align-items: center;">
+      <div><h2>Model profiles</h2></div>
+      <div style="text-align: right;"><a class="button" href="/profiles/new">New profile</a></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Provider</th>
+          <th>Model</th>
+          <th>Base URL</th>
+          <th>API key</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in profiles %}
+          <tr>
+            <td>{{ p.name|e }}</td>
+            <td><span class="pill">{{ p.provider_kind }}</span></td>
+            <td>{{ p.model|e }}</td>
+            <td class="muted">{{ p.base_url|e }}</td>
+            <td>
+              {% if p.api_key_enc %}
+                <span class="pill pill-ok">set</span>
+              {% else %}
+                <span class="pill pill-warn">unset</span>
+              {% endif %}
+            </td>
+            <td><a class="button button-secondary" href="/profiles/{{ p.id }}/edit">Edit</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
+

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <h2>Garak probes (built-in)</h2>
+    <div class="muted" style="margin-bottom: 10px;">
+      This runs `python -m garak --list_probes` on the server and caches results briefly.
+    </div>
+    {% if error %}
+      <div class="flash flash-error">{{ error|e }}</div>
+    {% endif %}
+    <pre class="log">{{ probes_text|e }}</pre>
+  </div>
+{% endblock %}
+

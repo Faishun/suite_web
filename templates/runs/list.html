@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <div class="row" style="align-items: center;">
+      <div><h2>Runs</h2></div>
+      <div style="text-align: right;"><a class="button" href="/runs/new">New run</a></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tool</th>
+          <th>Status</th>
+          <th>Model profile</th>
+          <th>Created</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in runs %}
+          <tr>
+            <td class="muted">#{{ r.id }}</td>
+            <td>{{ r.tool_kind }}</td>
+            <td>
+              {% if r.status == "SUCCEEDED" %}
+                <span class="pill pill-ok">{{ r.status }}</span>
+              {% elif r.status == "FAILED" %}
+                <span class="pill pill-bad">{{ r.status }}</span>
+              {% elif r.status == "RUNNING" %}
+                <span class="pill pill-warn">{{ r.status }}</span>
+              {% else %}
+                <span class="pill">{{ r.status }}</span>
+              {% endif %}
+            </td>
+            <td class="muted">{{ r.model_profile_id or "" }}</td>
+            <td class="muted">{{ r.created_at }}</td>
+            <td>
+              <a class="button button-secondary" href="/runs/{{ r.id }}">Open</a>
+              {% if r.status != "RUNNING" %}
+                <form method="post" action="/runs/{{ r.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete run #{{ r.id }}?');">
+                  <button class="button button-danger" type="submit">Delete</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
+

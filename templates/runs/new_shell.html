@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card" style="max-width: 900px;">
+    <h2>New run</h2>
+    <div id="new-run-loading" style="padding: 24px 0;">
+      <p class="muted" style="margin-bottom: 12px;">Initializing suites...</p>
+      <div class="loading-bar" style="height: 6px; background: #243047; border-radius: 4px; overflow: hidden;">
+        <div class="loading-bar-fill" style="height: 100%; width: 30%; background: #3b82f6; border-radius: 4px; animation: new-run-loading 1.2s ease-in-out infinite;"></div>
+      </div>
+    </div>
+    <div id="new-run-form-container" style="display: none;"></div>
+  </div>
+
+  <style>
+    @keyframes new-run-loading {
+      0% { transform: translateX(-100%); }
+      50% { transform: translateX(230%); }
+      100% { transform: translateX(-100%); }
+    }
+  </style>
+
+  <script>
+    (function () {
+      var container = document.getElementById("new-run-form-container");
+      var loading = document.getElementById("new-run-loading");
+
+      function runScriptsInFragment(parent) {
+        var scripts = parent.querySelectorAll("script");
+        scripts.forEach(function (s) {
+          var el = document.createElement("script");
+          if (s.src) { el.src = s.src; } else { el.textContent = s.textContent; }
+          document.body.appendChild(el);
+        });
+      }
+
+      function initNewRunForm() {
+        var catalog = window.AGENTDOJO_CATALOG || {};
+        var toolEl = document.getElementById("tool_kind");
+        var judgeRow = document.getElementById("judge_row");
+        var probesSection = document.getElementById("probes_section");
+        var agentdojoSection = document.getElementById("agentdojo_section");
+
+        function refresh() {
+          if (!toolEl) return;
+          var tool = toolEl.value;
+          var isLocalGuard = (tool === "localguard");
+          if (judgeRow) judgeRow.style.display = isLocalGuard ? "block" : "none";
+          var hasProbes = (tool === "garak" || tool === "augustus");
+          if (probesSection) probesSection.style.display = hasProbes ? "block" : "none";
+          var isAgentDojo = (tool === "agentdojo");
+          if (agentdojoSection) agentdojoSection.style.display = isAgentDojo && !catalog.error ? "block" : "none";
+          if (isAgentDojo && !catalog.error) { fillAgentDojoSuites(); fillAgentDojoTasks(); }
+          var kind = (tool === "garak") ? "garak" : (tool === "augustus") ? "augustus" : null;
+          var opts = document.querySelectorAll("#probes option");
+          for (var i = 0; i < opts.length; i++) {
+            var o = opts[i];
+            if (!kind) { o.disabled = false; continue; }
+            var ok = (o.getAttribute("data-kind") === kind);
+            if (!ok) o.selected = false;
+            o.disabled = !ok;
+          }
+          updateProbeDetails();
+        }
+
+        function updateProbeDetails() {
+          var sel = document.getElementById("probes");
+          var wrap = document.getElementById("probe_details");
+          var content = document.getElementById("probe_details_content");
+          if (!sel || !wrap || !content) return;
+          var selected = [];
+          for (var i = 0; i < sel.options.length; i++) {
+            var o = sel.options[i];
+            if (o.selected && !o.disabled) selected.push({ label: o.textContent || o.value, description: o.getAttribute("data-description") || "" });
+          }
+          if (selected.length === 0) { wrap.style.display = "none"; return; }
+          var html = "";
+          selected.forEach(function (p) {
+            var d = (p.description || "").trim();
+            html += "<div class=\"task-detail-item\"><strong>" + escapeHtml(p.label) + "</strong>";
+            if (d) html += "<pre class=\"task-detail-text\">" + escapeHtml(d) + "</pre>";
+            else html += "\n" + "<span class=\"muted\">No description.</span>";
+            html += "</div>";
+          });
+          content.innerHTML = html;
+          wrap.style.display = "block";
+        }
+
+        function fillAgentDojoSuites() {
+          var versionEl = document.getElementById("agentdojo_benchmark_version");
+          var suitesEl = document.getElementById("agentdojo_suites");
+          if (!versionEl || !suitesEl || !catalog.suites_by_version) return;
+          var version = versionEl.value;
+          var suites = catalog.suites_by_version[version];
+          if (!suites) return;
+          suitesEl.innerHTML = "";
+          Object.keys(suites).sort().forEach(function (n) {
+            var opt = document.createElement("option");
+            opt.value = n;
+            opt.textContent = n;
+            suitesEl.appendChild(opt);
+          });
+        }
+
+        function fillAgentDojoTasks() {
+          var versionEl = document.getElementById("agentdojo_benchmark_version");
+          var suitesEl = document.getElementById("agentdojo_suites");
+          var utEl = document.getElementById("agentdojo_user_tasks");
+          var itEl = document.getElementById("agentdojo_injection_tasks");
+          if (!versionEl || !suitesEl || !utEl || !itEl || !catalog.suites_by_version) return;
+          var version = versionEl.value;
+          var suites = catalog.suites_by_version[version];
+          if (!suites) return;
+          var selected = [];
+          for (var i = 0; i < suitesEl.options.length; i++) { if (suitesEl.options[i].selected) selected.push(suitesEl.options[i].value); }
+          if (selected.length === 0) selected = Object.keys(suites);
+          var userMap = {}, injMap = {};
+          selected.forEach(function (id) {
+            var s = suites[id];
+            if (!s) return;
+            (s.user_tasks || []).forEach(function (t) { var x = typeof t === "string" ? t : (t && t.id); if (x) userMap[x] = (t && typeof t === "object" && "prompt" in t) ? (t.prompt || "") : ""; });
+            (s.injection_tasks || []).forEach(function (t) { var x = typeof t === "string" ? t : (t && t.id); if (x) injMap[x] = (t && typeof t === "object" && "goal" in t) ? (t.goal || "") : ""; });
+          });
+          utEl.innerHTML = ""; Object.keys(userMap).sort().forEach(function (id) { var o = document.createElement("option"); o.value = id; o.textContent = id; utEl.appendChild(o); });
+          itEl.innerHTML = ""; Object.keys(injMap).sort().forEach(function (id) { var o = document.createElement("option"); o.value = id; o.textContent = id; itEl.appendChild(o); });
+          utEl._taskPrompts = userMap;
+          itEl._taskGoals = injMap;
+          updateAgentDojoTaskDetails();
+        }
+
+        function updateAgentDojoTaskDetails() {
+          var utEl = document.getElementById("agentdojo_user_tasks");
+          var itEl = document.getElementById("agentdojo_injection_tasks");
+          var detailsRow = document.getElementById("agentdojo_task_details");
+          var userDetail = document.getElementById("agentdojo_user_task_details");
+          var injDetail = document.getElementById("agentdojo_injection_task_details");
+          if (!utEl || !itEl || !detailsRow || !userDetail || !injDetail) return;
+          var userMap = utEl._taskPrompts || {}, injMap = itEl._taskGoals || {};
+          var selectedUt = [], selectedIt = [];
+          for (var i = 0; i < utEl.options.length; i++) { if (utEl.options[i].selected) selectedUt.push(utEl.options[i].value); }
+          for (var i = 0; i < itEl.options.length; i++) { if (itEl.options[i].selected) selectedIt.push(itEl.options[i].value); }
+          var userHtml = "", injHtml = "";
+          selectedUt.forEach(function (id) { var p = userMap[id]; if (p !== undefined) userHtml += "<div class=\"task-detail-item\"><strong>" + escapeHtml(id) + "</strong><pre class=\"task-detail-text\">" + escapeHtml(p) + "</pre></div>"; });
+          selectedIt.forEach(function (id) { var g = injMap[id]; if (g !== undefined) injHtml += "<div class=\"task-detail-item\"><strong>" + escapeHtml(id) + "</strong><pre class=\"task-detail-text\">" + escapeHtml(g) + "</pre></div>"; });
+          userDetail.innerHTML = userHtml || "<span class=\"muted\">Select a user task to read its prompt.</span>";
+          injDetail.innerHTML = injHtml || "<span class=\"muted\">Select an injection task to read its goal.</span>";
+          detailsRow.style.display = "block";
+        }
+
+        function escapeHtml(s) {
+          if (s == null) return "";
+          var div = document.createElement("div");
+          div.textContent = s;
+          return div.innerHTML;
+        }
+
+        if (toolEl) toolEl.addEventListener("change", refresh);
+        var versionEl = document.getElementById("agentdojo_benchmark_version");
+        var suitesEl = document.getElementById("agentdojo_suites");
+        var utEl = document.getElementById("agentdojo_user_tasks");
+        var itEl = document.getElementById("agentdojo_injection_tasks");
+        var probesEl = document.getElementById("probes");
+        if (probesEl) probesEl.addEventListener("change", updateProbeDetails);
+        if (versionEl) versionEl.addEventListener("change", function () { fillAgentDojoSuites(); fillAgentDojoTasks(); });
+        if (suitesEl) suitesEl.addEventListener("change", fillAgentDojoTasks);
+        if (utEl) utEl.addEventListener("change", updateAgentDojoTaskDetails);
+        if (itEl) itEl.addEventListener("change", updateAgentDojoTaskDetails);
+        refresh();
+      }
+
+      fetch("/runs/new?fragment=1")
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+          container.innerHTML = html;
+          runScriptsInFragment(container);
+          initNewRunForm();
+          container.style.display = "block";
+          if (loading) loading.style.display = "none";
+        })
+        .catch(function () {
+          if (loading) { loading.innerHTML = "<p class=\"flash flash-error\">Failed to load form. <a href=\"/runs/new\">Retry</a></p>"; }
+        });
+    })();
+  </script>
+{% endblock %}

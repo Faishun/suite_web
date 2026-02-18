@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card" style="max-width: 980px;">
+    <h2>{% if tmpl %}Edit Augustus template{% else %}New Augustus template{% endif %}</h2>
+
+    <div class="muted" style="margin-bottom: 12px;">
+      Augustus supports YAML probe templates (prompt-only probes) that are registered at runtime.
+    </div>
+
+    <form method="post" action="{% if tmpl %}/augustus/custom/{{ tmpl.id }}/edit{% else %}/augustus/custom/new{% endif %}">
+      <div class="row">
+        <div>
+          <label>Probe ID (must be like `namespace.Name`)</label>
+          <input type="text" name="template_id" value="{{ tmpl.template_id if tmpl else '' }}" placeholder="custom.MyProbe" required />
+        </div>
+        <div>
+          <label>Name</label>
+          <input type="text" name="name" value="{{ tmpl.name if tmpl else '' }}" required />
+        </div>
+        <div>
+          <label>Author</label>
+          <input type="text" name="author" value="{{ tmpl.author if tmpl else 'suite_web' }}" />
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>Description</label>
+        <input type="text" name="description" value="{{ tmpl.description if tmpl else '' }}" />
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>Goal</label>
+        <input type="text" name="goal" value="{{ tmpl.goal if tmpl else '' }}" />
+      </div>
+
+      <div class="row" style="margin-top: 10px;">
+        <div>
+          <label>Detector</label>
+          <select name="detector">
+            {% set current_det = tmpl.detector if tmpl else 'always.Always' %}
+            {% if current_det not in (augustus_detectors or []) %}
+              <option value="{{ current_det }}">{{ current_det }} (custom)</option>
+            {% endif %}
+            {% for d in (augustus_detectors or []) %}
+              <option value="{{ d }}" {% if d == current_det %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
+          <div class="muted" style="margin-top: 4px;">Evaluator that scores the model’s response for this probe (e.g. did the attack succeed).</div>
+        </div>
+        <div>
+          <label>Severity</label>
+          <select name="severity">
+            {% set sev = (tmpl.severity if tmpl else 'info') %}
+            {% for s in ['critical','high','medium','low','info'] %}
+              <option value="{{ s }}" {% if sev == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>Tags (comma-separated)</label>
+        <input type="text" name="tags_csv" value="{{ tmpl.tags_csv if tmpl else '' }}" />
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>Prompts (one per line)</label>
+        <textarea name="prompts_text" required>{{ tmpl.prompts_text if tmpl else '' }}</textarea>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <button type="submit">Save</button>
+        <a class="button button-secondary" href="/augustus/custom">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title or "LLM Security Suite" }}</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><a href="/">LLM Security Suite</a></div>
+      <nav class="nav">
+        {% if current_user %}
+          <a href="/profiles">Model profiles</a>
+          <a href="/runs">Runs</a>
+          <a href="/garak/custom">Custom probes</a>
+          <a href="/augustus/custom">Custom Augustus</a>
+          {% if current_user.is_admin %}
+            <a href="/admin/users">Users</a>
+          {% endif %}
+          <a href="/logout">Logout</a>
+        {% else %}
+          <a href="/login">Login</a>
+        {% endif %}
+      </nav>
+    </header>
+
+    <main class="container">
+      {% from "_macros.html" import flash_messages %}
+      {{ flash_messages(flashes or []) }}
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+      <div class="muted">Internal tool. Handle API keys carefully.</div>
+    </footer>
+  </body>
+</html>
+

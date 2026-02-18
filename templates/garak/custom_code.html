@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card" style="max-width: 1100px;">
+    <h2>Custom probe code (admin)</h2>
+    <div class="flash flash-error">
+      Editing raw probe code executes server-side Python when Garak imports it. Only do this in a trusted internal environment.
+    </div>
+
+    <div class="muted" style="margin-bottom: 10px;">
+      Module: <code>{{ module_path|e }}</code>
+    </div>
+
+    <form method="post" action="/garak/custom/{{ probe.id }}/code">
+      <label>Python code</label>
+      <textarea name="code" style="min-height: 520px;">{{ code|e }}</textarea>
+      <div style="margin-top: 12px;">
+        <button type="submit">Save code</button>
+        <a class="button button-secondary" href="/garak/custom">Back</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+

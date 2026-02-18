@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card" style="max-width: 900px;">
+    <h2>New run</h2>
+
+    <form method="post" action="/runs/new">
+      <div class="row">
+        <div>
+          <label>Tool</label>
+          <select name="tool_kind" id="tool_kind">
+            {% for t in tool_kinds %}
+              <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+          <div class="muted" style="margin-top: 6px;">
+            The worker executes the selected tool in the background.
+          </div>
+        </div>
+        <div>
+          <label>Scanned model profile</label>
+          <select name="model_profile_id" id="model_profile_id">
+            <option value="">(none)</option>
+            {% for p in profiles %}
+              <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind }} — {{ p.model }}</option>
+            {% endfor %}
+          </select>
+          <div class="muted" style="margin-top: 6px;">
+            Optional for tools that don’t require model settings.
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top: 10px; display:none;" id="judge_row">
+        <div>
+          <label>Judge model profile (LocalGuard only)</label>
+          <select name="judge_model_profile_id" id="judge_model_profile_id">
+            <option value="">(none)</option>
+            {% for p in profiles %}
+              <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind }} — {{ p.model }}</option>
+            {% endfor %}
+          </select>
+          <div class="muted" style="margin-top: 6px;">
+            LocalGuard needs both a scanned model and a judge model.\n
+            If you use OpenAI-compatible local models, both usually share the same base URL.
+          </div>
+        </div>
+        <div>
+          <label>Use cache (LocalGuard)</label>
+          <input type="hidden" name="localguard_use_cache" value="0" id="localguard_use_cache_hidden">
+          <label class="checkbox-inline" style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+            <input type="checkbox" name="localguard_use_cache" value="1" id="localguard_use_cache" checked>
+            <span>Remember completed phases and skip them on re-run</span>
+          </label>
+          <div class="muted" style="margin-top: 4px;">
+            Uncheck to run all phases again (disable cache).
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 10px;" id="probes_section">
+        <label>Probes</label>
+        <select name="probes" id="probes" multiple size="10">
+          {% for group in probe_groups %}
+            <optgroup label="{{ group.label }}">
+              {% for opt in group.options %}
+                <option value="{{ opt.value }}" data-kind="{{ group.kind }}" data-description="{{ (opt.description or '')[:2000]|e }}">{{ opt.label }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endfor %}
+        </select>
+        <div id="probe_details" style="margin-top: 8px; display: none;">
+          <label>Probe details</label>
+          <div id="probe_details_content" class="task-detail-box" style="margin-top: 4px;"></div>
+        </div>
+        <div class="muted" style="margin-top: 6px;">
+          Includes built-in probes and your custom probes. Select a probe to read its description. Not used for LocalGuard.
+          For Garak: these become `--probes`. For Augustus: these become repeated `--probe` flags.
+        </div>
+        {% if probe_error %}
+          <div class="flash flash-error" style="margin-top: 8px;">{{ probe_error|e }}</div>
+        {% endif %}
+      </div>
+
+      <div id="agentdojo_section" style="margin-top: 10px; display: none;">
+        <p class="muted">AgentDojo benchmarks <strong>models that use tool/function calling</strong>. Configure suite, tasks, and attack/defense. Leave optional fields empty to use defaults or run all.</p>
+        {% if agentdojo_catalog.error %}
+          <div class="flash flash-error" style="margin-top: 8px;">{{ agentdojo_catalog.error|e }}</div>
+        {% else %}
+          <div class="row" style="margin-top: 8px;">
+            <div>
+              <label>Benchmark version</label>
+              <select name="agentdojo_benchmark_version" id="agentdojo_benchmark_version">
+                {% for v in agentdojo_catalog.benchmark_versions %}
+                  <option value="{{ v }}" {% if v == "v1.2.2" %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label>Suites</label>
+              <select name="agentdojo_suites" id="agentdojo_suites" multiple size="4"></select>
+              <div class="muted" style="margin-top: 4px;">Leave empty to run all suites for this version.</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 8px;">
+            <div>
+              <label>User tasks (optional)</label>
+              <select name="agentdojo_user_tasks" id="agentdojo_user_tasks" multiple size="4"></select>
+              <div class="muted" style="margin-top: 4px;">Select a task to read its prompt below.</div>
+            </div>
+            <div>
+              <label>Injection tasks (optional)</label>
+              <select name="agentdojo_injection_tasks" id="agentdojo_injection_tasks" multiple size="4"></select>
+              <div class="muted" style="margin-top: 4px;">Select a task to read its goal below.</div>
+            </div>
+          </div>
+          <div id="agentdojo_task_details" style="margin-top: 10px; display: none;">
+            <label>Task details</label>
+            <div id="agentdojo_user_task_details" class="task-detail-box" style="margin-top: 4px;"></div>
+            <div id="agentdojo_injection_task_details" class="task-detail-box" style="margin-top: 8px;"></div>
+          </div>
+          <style>
+            .task-detail-box .task-detail-item { margin-bottom: 10px; }
+            .task-detail-box .task-detail-text { white-space: pre-wrap; word-break: break-word; max-height: 12em; overflow-y: auto; margin: 4px 0 0 0; padding: 8px; background: #070a10; border: 1px solid #243047; border-radius: 6px; font-size: 0.9em; color: inherit; }
+          </style>
+          <div class="row" style="margin-top: 8px;">
+            <div>
+              <label>Attack (optional)</label>
+              <select name="agentdojo_attack" id="agentdojo_attack">
+                <option value="">(none)</option>
+                {% for a in agentdojo_catalog.attacks %}
+                  <option value="{{ a }}">{{ a }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label>Defense (optional)</label>
+              <select name="agentdojo_defense" id="agentdojo_defense">
+                <option value="">(none)</option>
+                {% for d in agentdojo_catalog.defenses %}
+                  <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="muted" style="margin-top: 8px;">
+            Model, base URL, and API key come from the <strong>Scanned model profile</strong> above (openai_compat → LOCAL, openai → GPT-4o, etc.). Override via Advanced params if needed.
+          </div>
+        {% endif %}
+      </div>
+
+      <div style="margin-top: 10px;">
+        <label>Advanced params JSON (optional)</label>
+        <textarea name="params_json" id="params_json" placeholder='{"generations":5,"timeout_s":3600}'></textarea>
+        <div class="muted" style="margin-top: 6px;">
+          This merges on top of the selected fields. Leave blank unless you need extra knobs.
+        </div>
+      </div>
+
+      <div style="margin-top: 12px;">
+        <button type="submit">Queue run</button>
+        <a class="button button-secondary" href="/runs">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    (function () {
+      var toolEl = document.getElementById("tool_kind");
+      var judgeRow = document.getElementById("judge_row");
+      var probesSection = document.getElementById("probes_section");
+      var agentdojoSection = document.getElementById("agentdojo_section");
+      var catalog = {{ agentdojo_catalog_json | safe }};
+
+      function refresh() {
+        var tool = toolEl.value;
+        var isLocalGuard = (tool === "localguard");
+        judgeRow.style.display = isLocalGuard ? "block" : "none";
+        var hasProbes = (tool === "garak" || tool === "augustus");
+        probesSection.style.display = hasProbes ? "block" : "none";
+        var isAgentDojo = (tool === "agentdojo");
+        if (agentdojoSection) agentdojoSection.style.display = isAgentDojo && !catalog.error ? "block" : "none";
+
+        if (isAgentDojo && !catalog.error) {
+          fillAgentDojoSuites();
+          fillAgentDojoTasks();
+        }
+
+        // Disable probe options that don't match the tool (prevents misconfig).
+        var kind = null;
+        if (tool === "garak") kind = "garak";
+        if (tool === "augustus") kind = "augustus";
+        var opts = document.querySelectorAll("#probes option");
+        for (var i = 0; i < opts.length; i++) {
+          var o = opts[i];
+          if (!kind) {
+            o.disabled = false;
+            continue;
+          }
+          var ok = (o.getAttribute("data-kind") === kind);
+          if (!ok) o.selected = false;
+          o.disabled = !ok;
+        }
+        updateProbeDetails();
+      }
+
+      function updateProbeDetails() {
+        var sel = document.getElementById("probes");
+        var wrap = document.getElementById("probe_details");
+        var content = document.getElementById("probe_details_content");
+        if (!sel || !wrap || !content) return;
+        var selected = [];
+        for (var i = 0; i < sel.options.length; i++) {
+          var o = sel.options[i];
+          if (o.selected && !o.disabled) {
+            var label = o.textContent || o.value;
+            var desc = o.getAttribute("data-description") || "";
+            selected.push({ label: label, description: desc });
+          }
+        }
+        if (selected.length === 0) {
+          wrap.style.display = "none";
+          return;
+        }
+        var html = "";
+        selected.forEach(function (p) {
+          var d = (p.description || "").trim();
+          if (d) {
+            html += "<div class=\"task-detail-item\"><strong>" + escapeHtml(p.label) + "</strong><pre class=\"task-detail-text\">" + escapeHtml(d) + "</pre></div>";
+          } else {
+            html += "<div class=\"task-detail-item\"><strong>" + escapeHtml(p.label) + "\n" + "</strong><span class=\"muted\">No description.</span></div>";
+          }
+        });
+        content.innerHTML = html;
+        wrap.style.display = "block";
+      }
+
+      function fillAgentDojoSuites() {
+        var versionEl = document.getElementById("agentdojo_benchmark_version");
+        var suitesEl = document.getElementById("agentdojo_suites");
+        if (!versionEl || !suitesEl || !catalog.suites_by_version) return;
+        var version = versionEl.value;
+        var suites = catalog.suites_by_version[version];
+        if (!suites) return;
+        suitesEl.innerHTML = "";
+        var names = Object.keys(suites).sort();
+        for (var i = 0; i < names.length; i++) {
+          var opt = document.createElement("option");
+          opt.value = names[i];
+          opt.textContent = names[i];
+          suitesEl.appendChild(opt);
+        }
+      }
+
+      function fillAgentDojoTasks() {
+        var versionEl = document.getElementById("agentdojo_benchmark_version");
+        var suitesEl = document.getElementById("agentdojo_suites");
+        var utEl = document.getElementById("agentdojo_user_tasks");
+        var itEl = document.getElementById("agentdojo_injection_tasks");
+        if (!versionEl || !suitesEl || !utEl || !itEl || !catalog.suites_by_version) return;
+        var version = versionEl.value;
+        var suites = catalog.suites_by_version[version];
+        if (!suites) return;
+        var selected = [];
+        for (var i = 0; i < suitesEl.options.length; i++) {
+          if (suitesEl.options[i].selected) selected.push(suitesEl.options[i].value);
+        }
+        if (selected.length === 0) selected = Object.keys(suites);
+        var userMap = {};
+        var injMap = {};
+        for (var j = 0; j < selected.length; j++) {
+          var s = suites[selected[j]];
+          if (!s) continue;
+          (s.user_tasks || []).forEach(function (t) {
+            var id = typeof t === "string" ? t : (t && t.id);
+            if (id) userMap[id] = (t && typeof t === "object" && "prompt" in t) ? (t.prompt || "") : "";
+          });
+          (s.injection_tasks || []).forEach(function (t) {
+            var id = typeof t === "string" ? t : (t && t.id);
+            if (id) injMap[id] = (t && typeof t === "object" && "goal" in t) ? (t.goal || "") : "";
+          });
+        }
+        var uList = Object.keys(userMap).sort();
+        var iList = Object.keys(injMap).sort();
+        utEl.innerHTML = "";
+        uList.forEach(function (id) {
+          var opt = document.createElement("option");
+          opt.value = id;
+          opt.textContent = id;
+          utEl.appendChild(opt);
+        });
+        itEl.innerHTML = "";
+        iList.forEach(function (id) {
+          var opt = document.createElement("option");
+          opt.value = id;
+          opt.textContent = id;
+          itEl.appendChild(opt);
+        });
+        utEl._taskPrompts = userMap;
+        itEl._taskGoals = injMap;
+        updateAgentDojoTaskDetails();
+      }
+
+      function updateAgentDojoTaskDetails() {
+        var utEl = document.getElementById("agentdojo_user_tasks");
+        var itEl = document.getElementById("agentdojo_injection_tasks");
+        var detailsRow = document.getElementById("agentdojo_task_details");
+        var userDetail = document.getElementById("agentdojo_user_task_details");
+        var injDetail = document.getElementById("agentdojo_injection_task_details");
+        if (!utEl || !itEl || !detailsRow || !userDetail || !injDetail) return;
+        var userMap = utEl._taskPrompts || {};
+        var injMap = itEl._taskGoals || {};
+        var selectedUt = [];
+        for (var i = 0; i < utEl.options.length; i++) {
+          if (utEl.options[i].selected) selectedUt.push(utEl.options[i].value);
+        }
+        var selectedIt = [];
+        for (var i = 0; i < itEl.options.length; i++) {
+          if (itEl.options[i].selected) selectedIt.push(itEl.options[i].value);
+        }
+        var userHtml = "";
+        selectedUt.forEach(function (id) {
+          var prompt = userMap[id];
+          if (prompt !== undefined) {
+            userHtml += "<div class=\"task-detail-item\"><strong>" + escapeHtml(id) + "</strong><pre class=\"task-detail-text\">" + escapeHtml(prompt) + "</pre></div>";
+          }
+        });
+        var injHtml = "";
+        selectedIt.forEach(function (id) {
+          var goal = injMap[id];
+          if (goal !== undefined) {
+            injHtml += "<div class=\"task-detail-item\"><strong>" + escapeHtml(id) + "</strong><pre class=\"task-detail-text\">" + escapeHtml(goal) + "</pre></div>";
+          }
+        });
+        userDetail.innerHTML = userHtml || "<span class=\"muted\">Select a user task to read its prompt.</span>";
+        injDetail.innerHTML = injHtml || "<span class=\"muted\">Select an injection task to read its goal.</span>";
+        detailsRow.style.display = "block";
+      }
+
+      function escapeHtml(s) {
+        if (s == null) return "";
+        var div = document.createElement("div");
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      toolEl.addEventListener("change", refresh);
+      var versionEl = document.getElementById("agentdojo_benchmark_version");
+      var suitesEl = document.getElementById("agentdojo_suites");
+      var utEl = document.getElementById("agentdojo_user_tasks");
+      var itEl = document.getElementById("agentdojo_injection_tasks");
+      var probesEl = document.getElementById("probes");
+      if (probesEl) probesEl.addEventListener("change", updateProbeDetails);
+      if (versionEl) versionEl.addEventListener("change", function () { fillAgentDojoSuites(); fillAgentDojoTasks(); });
+      if (suitesEl) suitesEl.addEventListener("change", fillAgentDojoTasks);
+      if (utEl) utEl.addEventListener("change", updateAgentDojoTaskDetails);
+      if (itEl) itEl.addEventListener("change", updateAgentDojoTaskDetails);
+      refresh();
+    })();
+  </script>
+{% endblock %}
+
