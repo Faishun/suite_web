@@ -107,7 +107,7 @@ def main():
     # Support: python -m suite_web.app
     import uvicorn
 
-    host = os.getenv("SUITE_WEB_HOST", "0.0.0.0")
+    host = os.getenv("SUITE_WEB_HOST", "127.0.0.1")
     port = int(os.getenv("SUITE_WEB_PORT", "8080"))
     uvicorn.run("suite_web.app:app", host=host, port=port, reload=os.getenv("SUITE_WEB_RELOAD") == "1")
 
