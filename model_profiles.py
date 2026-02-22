@@ -7,13 +7,15 @@ from suite_web.models import ModelProfile, ProviderKind
 from suite_web.settings import Settings
 
 
-# Values we treat as "no key" so we don't send them (use override/sk-local instead).
-# "lmstudio" / "lm-studio" are NOT included so saved profile keys are used.
+# Values we treat as "no key" so we don't send them to real APIs (use override/sk-local for local servers).
+# Placeholders like "lmstudio" are for local OpenAI-compat servers that don't validate the key.
 _LOCAL_NO_AUTH_PLACEHOLDERS = frozenset(
     s.strip().lower()
     for s in (
         "ollama",
         "local",
+        "lmstudio",
+        "lm-studio",
         "no",
         "none",
         "n/a",

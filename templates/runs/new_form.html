@@ -16,7 +16,7 @@
         <select name="model_profile_id" id="model_profile_id">
           <option value="">(none)</option>
           {% for p in profiles %}
-            <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind }} — {{ p.model }}</option>
+            <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind|enum_display }} — {{ p.model }}</option>
           {% endfor %}
         </select>
         <div class="muted" style="margin-top: 6px;">
@@ -31,7 +31,7 @@
         <select name="judge_model_profile_id" id="judge_model_profile_id">
           <option value="">(none)</option>
           {% for p in profiles %}
-            <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind }} — {{ p.model }}</option>
+            <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind|enum_display }} — {{ p.model }}</option>
           {% endfor %}
         </select>
         <div class="muted" style="margin-top: 6px;">
@@ -40,6 +40,30 @@
         </div>
       </div>
       <div>
+        <label>Mode (LocalGuard)</label>
+        <select name="localguard_mode" id="localguard_mode" style="margin-top: 6px;">
+          <option value="full" selected>Full scan</option>
+          <option value="report-only">Report only</option>
+        </select>
+        <div class="muted" style="margin-top: 4px;">
+          <strong>Full scan</strong>: run Garak + compliance and generate report. <strong>Report only</strong>: recreate PDF/HTML from existing scan (no new scan).
+        </div>
+      </div>
+      <div>
+        <label>Garak generations (LocalGuard)</label>
+        <input type="number" name="localguard_garak_generations" id="localguard_garak_generations" value="1" min="1" style="margin-top: 6px; width: 5em;">
+        <div class="muted" style="margin-top: 4px;">
+          Number of generations per prompt (Phase 1). Use 1 if your API does not support <code>n&gt;1</code>.
+        </div>
+      </div>
+      <div>
+        <label>Garak parallel attempts (LocalGuard)</label>
+        <input type="number" name="localguard_garak_parallel_attempts" id="localguard_garak_parallel_attempts" value="" min="1" placeholder="default" style="margin-top: 6px; width: 5em;">
+        <div class="muted" style="margin-top: 4px;">
+          Optional. e.g. 16 for faster scan. Only if your model supports it; leave empty for Garak default.
+        </div>
+      </div>
+      <div style="margin-top: 18px;">
         <label>Use cache (LocalGuard)</label>
         <input type="hidden" name="localguard_use_cache" value="0" id="localguard_use_cache_hidden">
         <label class="checkbox-inline" style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
@@ -47,13 +71,33 @@
           <span>Remember completed phases and skip them on re-run</span>
         </label>
         <div class="muted" style="margin-top: 4px;">
-          Uncheck to run all phases again (disable cache).
+          Uncheck to run all phases again (disable cache). Ignored when mode is Report only.
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 10px; display:none;" id="garak_options_row">
+      <div class="row">
+        <div>
+          <label>Garak generations</label>
+          <input type="number" name="garak_generations" id="garak_generations" value="5" min="1" style="margin-top: 6px; width: 5em;">
+          <div class="muted" style="margin-top: 4px;">
+            Generations per prompt. Use 1 if your API does not support <code>n&gt;1</code>.
+          </div>
+        </div>
+        <div>
+          <label>Garak parallel attempts</label>
+          <input type="number" name="garak_parallel_attempts" id="garak_parallel_attempts" value="" min="1" placeholder="default" style="margin-top: 6px; width: 5em;">
+          <div class="muted" style="margin-top: 4px;">
+            Optional (e.g. 16). Only if your model supports it; leave empty for Garak default.
+          </div>
         </div>
       </div>
     </div>
 
     <div style="margin-top: 10px;" id="probes_section">
       <label>Probes</label>
+      <input type="text" id="probe_search" placeholder="Search probes (e.g. dan, encoding)…" autocomplete="off" style="width: 100%; max-width: 360px; margin-bottom: 6px; display: block;" />
       <select name="probes" id="probes" multiple size="10">
         {% for group in probe_groups %}
           <optgroup label="{{ group.label }}">
@@ -75,6 +119,30 @@
         <div class="flash flash-error" style="margin-top: 8px;">{{ probe_error|e }}</div>
       {% endif %}
     </div>
+    <script>
+      (function () {
+        var searchEl = document.getElementById("probe_search");
+        var toolEl = document.getElementById("tool_kind");
+        function applyProbeFilter() {
+          var tool = toolEl ? toolEl.value : "";
+          var kind = (tool === "garak") ? "garak" : (tool === "augustus") ? "augustus" : null;
+          var q = (searchEl && searchEl.value) ? searchEl.value.trim().toLowerCase() : "";
+          var opts = document.querySelectorAll("#probes option");
+          for (var i = 0; i < opts.length; i++) {
+            var o = opts[i];
+            var optionKind = o.getAttribute("data-kind");
+            var matchesKind = !kind || (optionKind === kind);
+            var text = (o.textContent || o.value || "").toLowerCase();
+            var matchesSearch = !q || text.indexOf(q) >= 0;
+            o.hidden = !matchesKind || !matchesSearch;
+          }
+        }
+        window.applyProbeFilter = applyProbeFilter;
+        if (searchEl) searchEl.addEventListener("input", applyProbeFilter);
+        if (toolEl) toolEl.addEventListener("change", applyProbeFilter);
+        applyProbeFilter();
+      })();
+    </script>
 
     <div id="agentdojo_section" style="margin-top: 10px; display: none;">
       <p class="muted">AgentDojo benchmarks <strong>models that use tool/function calling</strong>. Configure suite, tasks, and attack/defense. Leave optional fields empty to use defaults or run all.</p>
@@ -145,9 +213,23 @@
 
     <div style="margin-top: 10px;">
       <label>Advanced params JSON (optional)</label>
-      <textarea name="params_json" id="params_json" placeholder='{"generations":5,"timeout_s":3600}'></textarea>
+      <textarea name="params_json" id="params_json" placeholder='{"timeout_s":3600}' style="font-family: ui-monospace, monospace; min-height: 72px;"></textarea>
       <div class="muted" style="margin-top: 6px;">
-        This merges on top of the selected fields. Leave blank unless you need extra knobs.
+        Valid JSON object merged on top of the form. Leave blank to use defaults.
+      </div>
+      <div id="params_json_help" class="muted" style="margin-top: 8px; font-size: 0.95em;">
+        <div data-params-for="garak" style="display: none;">
+          <strong>Garak</strong> — e.g. <code>timeout_s</code> (seconds), <code>generations</code>, <code>parallel_attempts</code>, <code>request_timeout</code>, <code>temperature</code>, <code>max_tokens</code>, <code>report_prefix</code>. Probes come from the Probes selector above unless overridden here with <code>probes</code>.
+        </div>
+        <div data-params-for="augustus" style="display: none;">
+          <strong>Augustus</strong> — e.g. <code>timeout_s</code> (seconds), <code>timeout</code> (e.g. "30m"), <code>concurrency</code>, <code>probe_timeout</code> (e.g. "5m"), <code>generator</code>, <code>probes_glob</code>, <code>buffs_glob</code>, <code>temperature</code>, <code>max_tokens</code>, <code>verbose</code>. Probes come from the Probes selector unless overridden with <code>probes</code> or <code>probes_glob</code>.
+        </div>
+        <div data-params-for="localguard" style="display: none;">
+          <strong>LocalGuard</strong> — e.g. <code>timeout_s</code> (seconds), <code>mode</code> ("full" or "report-only"), <code>use_cache</code>, <code>garak_generations</code>, <code>garak_parallel_attempts</code>. Judge model is set above; other LocalGuard options can go here.
+        </div>
+        <div data-params-for="agentdojo" style="display: none;">
+          <strong>AgentDojo</strong> — e.g. <code>timeout_s</code>, <code>benchmark_version</code>, <code>suites</code>, <code>user_tasks</code>, <code>injection_tasks</code>, <code>attack</code>, <code>defense</code>, <code>tool_delimiter</code>, <code>max_workers</code>, <code>force_rerun</code>, <code>model</code>, <code>model_id</code>. Form fields above override these when set.
+        </div>
       </div>
     </div>
 

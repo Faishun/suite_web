@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlmodel import Session, select
 
 from suite_web.auth.deps import get_db_session, require_user
-from suite_web.crypto import encrypt_str
+from suite_web.crypto import decrypt_str, encrypt_str
 from suite_web.jsonutil import json_dumps
-from suite_web.models import ModelProfile, ProviderKind, User
+from suite_web.models import ModelProfile, ProviderKind, Run, User
 from suite_web.templating import template_context_base
 from suite_web.web import flash, redirect
 
@@ -113,6 +113,26 @@ def profile_edit_page(
     return templates.TemplateResponse("profiles/edit.html", ctx)
 
 
+@router.get("/{profile_id}/api-key")
+def profile_reveal_api_key(
+    request: Request,
+    profile_id: int,
+    user: User = Depends(require_user),
+    session: Session = Depends(get_db_session),
+):
+    """Return decrypted API key for the profile (owner only). Used by edit page reveal button."""
+    profile = session.exec(
+        select(ModelProfile).where(ModelProfile.id == profile_id, ModelProfile.owner_user_id == user.id)
+    ).first()
+    if profile is None or not profile.api_key_enc:
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+    try:
+        key = decrypt_str(request.app.state.settings.master_key, profile.api_key_enc)  # type: ignore[attr-defined]
+    except Exception:
+        return JSONResponse({"detail": "Could not decrypt key"}, status_code=500)
+    return JSONResponse({"api_key": key})
+
+
 @router.post("/{profile_id}/edit")
 def profile_edit_submit(
     request: Request,
@@ -160,5 +180,29 @@ def profile_edit_submit(
     session.add(profile)
     session.commit()
     flash(request, "Profile saved", level="success")
+    return redirect("/profiles")
+
+
+@router.post("/{profile_id}/delete")
+def profile_delete(
+    request: Request,
+    profile_id: int,
+    user: User = Depends(require_user),
+    session: Session = Depends(get_db_session),
+):
+    profile = session.exec(
+        select(ModelProfile).where(ModelProfile.id == profile_id, ModelProfile.owner_user_id == user.id)
+    ).first()
+    if profile is None:
+        flash(request, "Profile not found", level="error")
+        return redirect("/profiles")
+    # Unlink runs that use this profile
+    runs = session.exec(select(Run).where(Run.model_profile_id == profile_id)).all()
+    for run in runs:
+        run.model_profile_id = None
+        session.add(run)
+    session.delete(profile)
+    session.commit()
+    flash(request, "Profile deleted", level="success")
     return redirect("/profiles")
 

@@ -37,6 +37,7 @@
         var catalog = window.AGENTDOJO_CATALOG || {};
         var toolEl = document.getElementById("tool_kind");
         var judgeRow = document.getElementById("judge_row");
+        var garakOptionsRow = document.getElementById("garak_options_row");
         var probesSection = document.getElementById("probes_section");
         var agentdojoSection = document.getElementById("agentdojo_section");
 
@@ -45,6 +46,7 @@
           var tool = toolEl.value;
           var isLocalGuard = (tool === "localguard");
           if (judgeRow) judgeRow.style.display = isLocalGuard ? "block" : "none";
+          if (garakOptionsRow) garakOptionsRow.style.display = (tool === "garak") ? "block" : "none";
           var hasProbes = (tool === "garak" || tool === "augustus");
           if (probesSection) probesSection.style.display = hasProbes ? "block" : "none";
           var isAgentDojo = (tool === "agentdojo");
@@ -59,7 +61,15 @@
             if (!ok) o.selected = false;
             o.disabled = !ok;
           }
+          if (window.applyProbeFilter) window.applyProbeFilter();
           updateProbeDetails();
+          var helpContainer = document.getElementById("params_json_help");
+          if (helpContainer) {
+            var blocks = helpContainer.querySelectorAll("[data-params-for]");
+            for (var i = 0; i < blocks.length; i++) {
+              blocks[i].style.display = (blocks[i].getAttribute("data-params-for") === tool) ? "block" : "none";
+            }
+          }
         }
 
         function updateProbeDetails() {

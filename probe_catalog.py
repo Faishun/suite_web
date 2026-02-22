@@ -14,6 +14,18 @@ _PROBE_TOKEN_RE = re.compile(r"\b([a-zA-Z0-9_]+\.[a-zA-Z0-9_]+)\b")
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 
+def _looks_like_probe_name(token: str) -> bool:
+    """Return False for number-like tokens (e.g. 54.480273) that slip through the probe regex."""
+    if not token or "." not in token:
+        return False
+    a, _, b = token.partition(".")
+    # Require at least one letter in module or class so we keep dan.BasicDAN, promptinject.X, etc.
+    has_letter = bool(re.search(r"[a-zA-Z]", a)) or bool(re.search(r"[a-zA-Z]", b))
+    # Reject tokens that look like floats or version numbers (e.g. 54.480273, 1.0).
+    all_numeric = re.match(r"^[\d.]+$", token) or (a.isdigit() and b.replace("_", "").replace(".", "").isdigit())
+    return has_letter and not all_numeric
+
+
 @dataclass(frozen=True)
 class ProbeOption:
     value: str
@@ -46,7 +58,8 @@ def list_garak_probes(ttl_s: float = 30.0) -> tuple[list[str], str]:
     try:
         out = subprocess.check_output([sys.executable, "-m", "garak", "--list_probes"], stderr=subprocess.STDOUT, text=True)
         cleaned = strip_ansi(out)
-        probes = sorted(set(_PROBE_TOKEN_RE.findall(cleaned)))
+        raw = _PROBE_TOKEN_RE.findall(cleaned)
+        probes = sorted(set(t for t in raw if _looks_like_probe_name(t)))
         _cache_set("garak_probes", probes, "")
         return probes, ""
     except Exception as e:
@@ -63,7 +76,8 @@ def list_garak_detectors(ttl_s: float = 60.0) -> tuple[list[str], str]:
     try:
         out = subprocess.check_output([sys.executable, "-m", "garak", "--list_detectors"], stderr=subprocess.STDOUT, text=True)
         cleaned = strip_ansi(out)
-        detectors = sorted(set(_PROBE_TOKEN_RE.findall(cleaned)))
+        raw = _PROBE_TOKEN_RE.findall(cleaned)
+        detectors = sorted(set(t for t in raw if _looks_like_probe_name(t)))
         _cache_set("garak_detectors", detectors, "")
         return detectors, ""
     except Exception as e:
@@ -164,19 +178,34 @@ def list_augustus_probes(settings: Settings, ttl_s: float = 60.0) -> tuple[list[
     if cached is not None:
         return cached
 
-    # Best-effort: use `augustus list` if the binary exists. Otherwise try `go run`.
+    cwd = settings.augustus_dir
+    # Prefer `augustus list -j`: keys are the actual probes in the registry, so we avoid
+    # offering names that appear in help text but aren't registered (e.g. encoding.Base16).
     try:
         cmd: list[str]
-        cwd = settings.augustus_dir
+        if settings.augustus_bin:
+            cmd = [settings.augustus_bin, "list", "-j"]
+        else:
+            cmd = ["go", "run", "./cmd/augustus", "list", "-j"]
+        out = subprocess.check_output(cmd, cwd=str(cwd), stderr=subprocess.DEVNULL, text=True, timeout=60)
+        raw = json.loads(out)
+        if isinstance(raw, dict):
+            probes = sorted(raw.keys())
+            _cache_set("augustus_probes", probes, "")
+            return probes, ""
+    except Exception:
+        pass
+
+    # Fallback: heuristic parse of `augustus list` (no -j or parse failed).
+    try:
         if settings.augustus_bin:
             cmd = [settings.augustus_bin, "list"]
         else:
             cmd = ["go", "run", "./cmd/augustus", "list"]
-
         out = subprocess.check_output(cmd, cwd=str(cwd), stderr=subprocess.STDOUT, text=True)
-        # Heuristic parse: probe names are usually like "dan.BasicDAN" and appear as tokens.
         cleaned = strip_ansi(out)
-        probes = sorted(set(_PROBE_TOKEN_RE.findall(cleaned)))
+        raw = _PROBE_TOKEN_RE.findall(cleaned)
+        probes = sorted(set(t for t in raw if _looks_like_probe_name(t)))
         _cache_set("augustus_probes", probes, "")
         return probes, ""
     except Exception as e:

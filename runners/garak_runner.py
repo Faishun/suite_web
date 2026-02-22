@@ -22,6 +22,7 @@ class GarakRunner(ToolRunner):
         Params (JSON):
           - probes: "malwaregen.Evasion" or "dan,promptinject" (default: "dan,promptinject")
           - generations: int (default: 5)
+          - parallel_attempts: int (optional). If set, pass --parallel_attempts to Garak (user must ensure model supports it).
           - report_prefix: str (default: "garak_out")
           - timeout_s: float (default: 3600)
         """
@@ -32,7 +33,8 @@ class GarakRunner(ToolRunner):
             probes = _normalize_probe(str(probes_param))
         if not probes:
             probes = "dan,promptinject"
-        generations = int(ctx.params.get("generations", 5))
+        generations = max(1, int(ctx.params.get("generations", 5)))
+        parallel_attempts = ctx.params.get("parallel_attempts")
         report_prefix = str(ctx.params.get("report_prefix", "garak_out")).strip() or "garak_out"
         timeout_s = float(ctx.params.get("timeout_s", 3600))
 
@@ -116,6 +118,11 @@ class GarakRunner(ToolRunner):
             "--report_prefix",
             str(ctx.artifacts_dir / report_prefix),
         ]
+        if parallel_attempts is not None and str(parallel_attempts).strip():
+            try:
+                cmd.extend(["--parallel_attempts", str(int(parallel_attempts))])
+            except (ValueError, TypeError):
+                pass
 
         result, pid = run_command_streaming(
             cmd=cmd,

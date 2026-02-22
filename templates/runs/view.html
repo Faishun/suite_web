@@ -4,7 +4,7 @@
     <div class="row" style="align-items: center;">
       <div>
         <h2>Run #{{ run.id }}</h2>
-        <div class="muted">Tool: {{ run.tool_kind }} | Status: {{ run.status }}{% if run.exit_code is not none %} | Exit: {{ run.exit_code }}{% endif %}</div>
+        <div class="muted">Tool: {{ run.tool_kind|enum_display }} | Status: {{ run.status|enum_display }}{% if run.exit_code is not none %} | Exit: {{ run.exit_code }}{% endif %}</div>
       </div>
       <div style="text-align: right;">
         {% if run.status == "RUNNING" %}
@@ -53,7 +53,7 @@
 
   <script>
     (function() {
-      var runStatus = "{{ run.status }}";
+      var runStatus = "{{ run.status|enum_display }}";
       if (runStatus !== "RUNNING" && runStatus !== "PENDING") return;
 
       var logEl = document.getElementById("log");

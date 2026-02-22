@@ -16,10 +16,17 @@ class HttpCheckResult:
     duration_ms: int
 
 
-def http_get_json(url: str, timeout_s: float = 3.0) -> tuple[HttpCheckResult, dict | None]:
+def http_get_json(
+    url: str,
+    timeout_s: float = 3.0,
+    headers: dict[str, str] | None = None,
+) -> tuple[HttpCheckResult, dict | None]:
     start = time.time()
+    h = {"Accept": "application/json"}
+    if headers:
+        h.update(headers)
     try:
-        req = Request(url, method="GET", headers={"Accept": "application/json"})
+        req = Request(url, method="GET", headers=h)
         with urlopen(req, timeout=timeout_s) as resp:
             status = getattr(resp, "status", None) or 200
             data = resp.read()

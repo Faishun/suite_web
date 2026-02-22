@@ -11,8 +11,19 @@ from suite_web.auth.sessions import get_session_user_id
 from suite_web.models import User
 
 
+def _enum_display(value: Any) -> str:
+    """Return enum .value for display (e.g. 'localguard' not 'ToolKind.localguard')."""
+    if value is None:
+        return ""
+    if hasattr(value, "value"):
+        return str(value.value)
+    return str(value)
+
+
 def create_templates(repo_root: Path) -> Jinja2Templates:
-    return Jinja2Templates(directory=str(repo_root / "suite_web" / "templates"))
+    t = Jinja2Templates(directory=str(repo_root / "suite_web" / "templates"))
+    t.env.filters["enum_display"] = _enum_display
+    return t
 
 
 def pop_flashes(request: Request) -> list[dict[str, str]]:

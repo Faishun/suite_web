@@ -21,16 +21,16 @@
         {% for r in runs %}
           <tr>
             <td class="muted">#{{ r.id }}</td>
-            <td>{{ r.tool_kind }}</td>
+            <td>{{ r.tool_kind|enum_display }}</td>
             <td>
               {% if r.status == "SUCCEEDED" %}
-                <span class="pill pill-ok">{{ r.status }}</span>
+                <span class="pill pill-ok">{{ r.status|enum_display }}</span>
               {% elif r.status == "FAILED" %}
-                <span class="pill pill-bad">{{ r.status }}</span>
+                <span class="pill pill-bad">{{ r.status|enum_display }}</span>
               {% elif r.status == "RUNNING" %}
-                <span class="pill pill-warn">{{ r.status }}</span>
+                <span class="pill pill-warn">{{ r.status|enum_display }}</span>
               {% else %}
-                <span class="pill">{{ r.status }}</span>
+                <span class="pill">{{ r.status|enum_display }}</span>
               {% endif %}
             </td>
             <td class="muted">{{ r.model_profile_id or "" }}</td>

@@ -31,7 +31,14 @@
 
       <div style="margin-top: 10px;">
         <label>API key {% if profile and profile.api_key_enc %}(currently set){% endif %}</label>
-        <input type="text" name="api_key" placeholder="Leave blank to keep existing" autocomplete="off" />
+        <div class="api-key-wrap" style="display: flex; align-items: center; gap: 8px; max-width: 480px;">
+          <input type="password" name="api_key" id="api_key_input" placeholder="{{ 'Click eye to reveal' if (profile and profile.api_key_enc) else 'Optional — leave blank if no key needed' }}" autocomplete="off" style="flex: 1;" />
+          {% if profile and profile.api_key_enc %}
+          <button type="button" id="api_key_toggle" class="button button-secondary" title="Show API key" style="padding: 8px 12px; min-width: auto;" aria-label="Show API key">
+            <svg id="api_key_eye_icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          {% endif %}
+        </div>
         <div class="muted" style="margin-top: 6px;">
           Stored encrypted at rest. For local servers use any value your server accepts (e.g. <code>lmstudio</code>).
         </div>
@@ -39,14 +46,82 @@
 
       <div style="margin-top: 10px;">
         <label>Extra JSON (optional)</label>
-        <textarea name="extra_json" placeholder='{\"headers\": {\"X-Foo\": \"bar\"}}'>{{ profile.extra_json if profile else '{}' }}</textarea>
+        <textarea name="extra_json" placeholder='{"headers": {"X-Foo": "bar"}}' style="font-family: ui-monospace, monospace; min-height: 80px;">{{ profile.extra_json if profile else '{}' }}</textarea>
+        <div class="muted" style="margin-top: 8px;">
+          <strong>Options</strong> (valid JSON object). Used when runs with this profile need extra request config:
+        </div>
+        <ul class="muted" style="margin: 4px 0 0 1.2em; font-size: 0.95em;">
+          <li><code>headers</code> — Custom HTTP headers, e.g. <code>{"X-API-Key": "…", "X-Request-Source": "suite"}</code></li>
+          <li><code>request_timeout</code> — Request timeout in seconds (number), e.g. <code>120</code></li>
+          <li>Other keys may be supported by specific tools (Garak, Augustus, etc.). Leave as <code>{}</code> if not needed.</li>
+        </ul>
+        <div class="muted" style="margin-top: 6px;">
+          Example: <code>{"headers": {"Authorization": "Bearer …"}, "request_timeout": 60}</code>
+        </div>
       </div>
 
       <div style="margin-top: 12px;">
         <button type="submit">Save</button>
         <a class="button button-secondary" href="/profiles">Cancel</a>
+        {% if profile %}
+        <button type="button" id="delete_profile_btn" class="button" style="margin-left: auto; background: var(--danger, #c33); color: #fff;">Delete profile</button>
+        {% endif %}
       </div>
     </form>
   </div>
+{% endblock %}
+
+{% block foot %}
+  {% if profile %}
+  <script>
+    (function() {
+      var profileId = {{ profile.id }};
+      var toggleBtn = document.getElementById('api_key_toggle');
+      var input = document.getElementById('api_key_input');
+      if (toggleBtn && input) {
+        var visible = false;
+        var eyeSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+        var eyeOffSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+        toggleBtn.addEventListener('click', function() {
+          if (visible) {
+            input.type = 'password';
+            toggleBtn.innerHTML = eyeSvg;
+            toggleBtn.title = 'Show API key';
+            toggleBtn.setAttribute('aria-label', 'Show API key');
+            visible = false;
+          } else {
+            fetch('/profiles/' + profileId + '/api-key')
+              .then(function(r) {
+                if (!r.ok) throw new Error('Could not load key');
+                return r.json();
+              })
+              .then(function(data) {
+                input.value = data.api_key || '';
+                input.type = 'text';
+                toggleBtn.innerHTML = eyeOffSvg;
+                toggleBtn.title = 'Hide API key';
+                toggleBtn.setAttribute('aria-label', 'Hide API key');
+                visible = true;
+              })
+              .catch(function() {
+                alert('Could not load API key.');
+              });
+          }
+        });
+      }
+      var deleteBtn = document.getElementById('delete_profile_btn');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', function() {
+          if (!confirm('Delete this profile? Runs using it will be unlinked.')) return;
+          var form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/profiles/' + profileId + '/delete';
+          document.body.appendChild(form);
+          form.submit();
+        });
+      }
+    })();
+  </script>
+  {% endif %}
 {% endblock %}
 

@@ -149,7 +149,12 @@ def runs_new_submit(
     tool_kind: str = Form(...),
     model_profile_id: str = Form(""),
     judge_model_profile_id: str = Form(""),
+    localguard_mode: str = Form("full"),
     localguard_use_cache: str = Form("1"),
+    localguard_garak_generations: str = Form("1"),
+    localguard_garak_parallel_attempts: str = Form(""),
+    garak_generations: str = Form("5"),
+    garak_parallel_attempts: str = Form(""),
     probes: list[str] = Form([]),
     params_json: str = Form("{}"),
     agentdojo_benchmark_version: str = Form(""),
@@ -226,12 +231,33 @@ def runs_new_submit(
             flash(request, "Judge model profile not found", level="error")
             return redirect("/runs/new")
         parsed["judge_model_profile_id"] = judge_id
+        mode_val = (localguard_mode or "full").strip().lower()
+        parsed["mode"] = "report-only" if mode_val == "report-only" else "full"
         _use_cache_val = localguard_use_cache if isinstance(localguard_use_cache, str) else (localguard_use_cache[-1] if localguard_use_cache else "1")
         parsed["use_cache"] = str(_use_cache_val).strip().lower() in ("1", "true", "yes", "on")
+        try:
+            parsed["garak_generations"] = max(1, int((localguard_garak_generations or "1").strip()))
+        except (ValueError, TypeError):
+            parsed["garak_generations"] = 1
+        if (localguard_garak_parallel_attempts or "").strip():
+            try:
+                parsed["garak_parallel_attempts"] = int(localguard_garak_parallel_attempts.strip())
+            except (ValueError, TypeError):
+                pass
     else:
         # Non-LocalGuard tools: probes dropdown is available.
         if probes:
             parsed["probes"] = [p for p in probes if p and p.strip()]
+        if tk == ToolKind.garak:
+            try:
+                parsed["generations"] = max(1, int((garak_generations or "5").strip()))
+            except (ValueError, TypeError):
+                parsed["generations"] = 5
+            if (garak_parallel_attempts or "").strip():
+                try:
+                    parsed["parallel_attempts"] = int(garak_parallel_attempts.strip())
+                except (ValueError, TypeError):
+                    pass
 
     run = Run(
         owner_user_id=user.id or 0,

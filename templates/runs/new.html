@@ -21,7 +21,7 @@
           <select name="model_profile_id" id="model_profile_id">
             <option value="">(none)</option>
             {% for p in profiles %}
-              <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind }} — {{ p.model }}</option>
+              <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind|enum_display }} — {{ p.model }}</option>
             {% endfor %}
           </select>
           <div class="muted" style="margin-top: 6px;">
@@ -36,7 +36,7 @@
           <select name="judge_model_profile_id" id="judge_model_profile_id">
             <option value="">(none)</option>
             {% for p in profiles %}
-              <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind }} — {{ p.model }}</option>
+              <option value="{{ p.id }}">{{ p.name }} — {{ p.provider_kind|enum_display }} — {{ p.model }}</option>
             {% endfor %}
           </select>
           <div class="muted" style="margin-top: 6px;">
@@ -45,6 +45,30 @@
           </div>
         </div>
         <div>
+          <label>Mode (LocalGuard)</label>
+          <select name="localguard_mode" id="localguard_mode" style="margin-top: 6px;">
+            <option value="full" selected>Full scan</option>
+            <option value="report-only">Report only</option>
+          </select>
+          <div class="muted" style="margin-top: 4px;">
+            <strong>Full scan</strong>: run Garak + compliance and generate report. <strong>Report only</strong>: recreate PDF/HTML from existing scan (no new scan).
+          </div>
+        </div>
+        <div>
+          <label>Garak generations (LocalGuard)</label>
+          <input type="number" name="localguard_garak_generations" id="localguard_garak_generations" value="1" min="1" style="margin-top: 6px; width: 5em;">
+          <div class="muted" style="margin-top: 4px;">
+            Generations per prompt (Phase 1). Use 1 if your API does not support n&gt;1.
+          </div>
+        </div>
+        <div>
+          <label>Garak parallel attempts (LocalGuard)</label>
+          <input type="number" name="localguard_garak_parallel_attempts" id="localguard_garak_parallel_attempts" value="" min="1" placeholder="default" style="margin-top: 6px; width: 5em;">
+          <div class="muted" style="margin-top: 4px;">
+            Optional (e.g. 16). Only if your model supports it.
+          </div>
+        </div>
+        <div style="margin-top: 18px;">
           <label>Use cache (LocalGuard)</label>
           <input type="hidden" name="localguard_use_cache" value="0" id="localguard_use_cache_hidden">
           <label class="checkbox-inline" style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
@@ -52,7 +76,26 @@
             <span>Remember completed phases and skip them on re-run</span>
           </label>
           <div class="muted" style="margin-top: 4px;">
-            Uncheck to run all phases again (disable cache).
+            Uncheck to run all phases again (disable cache). Ignored when mode is Report only.
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 10px; display:none;" id="garak_options_row">
+        <div class="row">
+          <div>
+            <label>Garak generations</label>
+            <input type="number" name="garak_generations" id="garak_generations" value="5" min="1" style="margin-top: 6px; width: 5em;">
+            <div class="muted" style="margin-top: 4px;">
+              Generations per prompt. Use 1 if your API does not support n&gt;1.
+            </div>
+          </div>
+          <div>
+            <label>Garak parallel attempts</label>
+            <input type="number" name="garak_parallel_attempts" id="garak_parallel_attempts" value="" min="1" placeholder="default" style="margin-top: 6px; width: 5em;">
+            <div class="muted" style="margin-top: 4px;">
+              Optional (e.g. 16). Only if your model supports it; leave empty for Garak default.
+            </div>
           </div>
         </div>
       </div>
@@ -150,9 +193,23 @@
 
       <div style="margin-top: 10px;">
         <label>Advanced params JSON (optional)</label>
-        <textarea name="params_json" id="params_json" placeholder='{"generations":5,"timeout_s":3600}'></textarea>
+        <textarea name="params_json" id="params_json" placeholder='{"timeout_s":3600}' style="font-family: ui-monospace, monospace; min-height: 72px;"></textarea>
         <div class="muted" style="margin-top: 6px;">
-          This merges on top of the selected fields. Leave blank unless you need extra knobs.
+          Valid JSON object merged on top of the form. Leave blank to use defaults.
+        </div>
+        <div id="params_json_help" class="muted" style="margin-top: 8px; font-size: 0.95em;">
+          <div data-params-for="garak" style="display: none;">
+            <strong>Garak</strong> — e.g. <code>timeout_s</code> (seconds), <code>generations</code>, <code>parallel_attempts</code>, <code>request_timeout</code>, <code>temperature</code>, <code>max_tokens</code>, <code>report_prefix</code>. Probes come from the Probes selector above unless overridden here with <code>probes</code>.
+          </div>
+          <div data-params-for="augustus" style="display: none;">
+            <strong>Augustus</strong> — e.g. <code>timeout_s</code> (seconds), <code>timeout</code> (e.g. "30m"), <code>concurrency</code>, <code>probe_timeout</code> (e.g. "5m"), <code>generator</code>, <code>probes_glob</code>, <code>buffs_glob</code>, <code>temperature</code>, <code>max_tokens</code>, <code>verbose</code>. Probes come from the Probes selector unless overridden with <code>probes</code> or <code>probes_glob</code>.
+          </div>
+          <div data-params-for="localguard" style="display: none;">
+            <strong>LocalGuard</strong> — e.g. <code>timeout_s</code> (seconds), <code>mode</code> ("full" or "report-only"), <code>use_cache</code>, <code>garak_generations</code>, <code>garak_parallel_attempts</code>. Judge model is set above; other LocalGuard options can go here.
+          </div>
+          <div data-params-for="agentdojo" style="display: none;">
+            <strong>AgentDojo</strong> — e.g. <code>timeout_s</code>, <code>benchmark_version</code>, <code>suites</code>, <code>user_tasks</code>, <code>injection_tasks</code>, <code>attack</code>, <code>defense</code>, <code>tool_delimiter</code>, <code>max_workers</code>, <code>force_rerun</code>, <code>model</code>, <code>model_id</code>. Form fields above override these when set.
+          </div>
         </div>
       </div>
 
@@ -167,6 +224,7 @@
     (function () {
       var toolEl = document.getElementById("tool_kind");
       var judgeRow = document.getElementById("judge_row");
+      var garakOptionsRow = document.getElementById("garak_options_row");
       var probesSection = document.getElementById("probes_section");
       var agentdojoSection = document.getElementById("agentdojo_section");
       var catalog = {{ agentdojo_catalog_json | safe }};
@@ -175,6 +233,7 @@
         var tool = toolEl.value;
         var isLocalGuard = (tool === "localguard");
         judgeRow.style.display = isLocalGuard ? "block" : "none";
+        if (garakOptionsRow) garakOptionsRow.style.display = (tool === "garak") ? "block" : "none";
         var hasProbes = (tool === "garak" || tool === "augustus");
         probesSection.style.display = hasProbes ? "block" : "none";
         var isAgentDojo = (tool === "agentdojo");
@@ -201,6 +260,13 @@
           o.disabled = !ok;
         }
         updateProbeDetails();
+        var helpContainer = document.getElementById("params_json_help");
+        if (helpContainer) {
+          var blocks = helpContainer.querySelectorAll("[data-params-for]");
+          for (var i = 0; i < blocks.length; i++) {
+            blocks[i].style.display = (blocks[i].getAttribute("data-params-for") === tool) ? "block" : "none";
+          }
+        }
       }
 
       function updateProbeDetails() {

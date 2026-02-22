@@ -337,5 +337,14 @@
                 ]
             }
         }
+    },
+    "openai-gpt-oss-20b-heretic-uncensored-neo-imatrix": {
+        "provider": "openai"
+    },
+    "deepseek-chat": {
+        "provider": "openai"
+    },
+    "qwen/qwen3-4b-2507": {
+        "provider": "openai"
     }
 }
